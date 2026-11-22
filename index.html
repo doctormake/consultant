@@ -1379,7 +1379,7 @@ function renderAgeSelect(){
   const opts = [{v:0,t:'до 1 месяца'}];
   for (let i=1;i<=12;i++) opts.push({v:i, t:i+' мес' + (i===1?'яц':(i<5?'яца':'яцев'))});
   fillSelect($('#age'), opts, state.ageMonths);
-  fillSelect($('#weeks'), [1,2,3,4].map(w=>({v:w,t:w+' неделя'+(w===1?'':' ')})), state.weeks);
+  fillSelect($('#weeks'), [1,2,3,4].map(w=>({v:w,t:(w===1 ? '1 неделя' : w + ' недели')})), state.weeks);
   $('#weeksWrap').style.display = state.ageMonths === 0 ? '' : 'none';
 }
 function renderFeeding(){
@@ -1781,6 +1781,7 @@ function renderAutoBlocks(){
 
 function refresh(keepSched){
   if (!state.advanced) applyAuto();
+  state.porridgeOnFormula = state.porridgeBase === 'formula';   // выставляем до расчёта — план сразу актуальный
   render();   // считаем план первым — панели показывают фактические значения
   renderFeeding();
   if (keepSched !== true) renderScheduleEditor();   // пока врач набирает время, таблицу расписания не пересоздаём
@@ -1800,9 +1801,7 @@ function refresh(keepSched){
         : 'Первый прикорм выбран врачом; второй — в 5 мес (шаг 9).');
   $('#vitDHint').textContent = state.vitD === 'auto' ? 'Авто: по шагу 6 алгоритма (недоношенный — 1000 МЕ с 2 нед, доношенный — 500–1000 МЕ с 4 нед).' : '';
   $('#sopManualWrap').style.display = state.volMethod === 'manual' ? '' : 'none';
-  state.porridgeOnFormula = state.porridgeBase === 'formula';
   $$('#segVol button').forEach(b => b.classList.toggle('on', b.dataset.v === state.volMethod));
-  render();
   saveState();
 }
 function onAgeChanged(){
@@ -1819,7 +1818,8 @@ function onAgeChanged(){
 function bind(){
   $('#age').addEventListener('change', e => { state.ageMonths = +e.target.value; renderAgeSelect(); onAgeChanged(); });
   $('#weeks').addEventListener('change', e => { state.weeks = +e.target.value; refresh(); });
-  $('#weight').addEventListener('input', e => { state.weightG = +e.target.value || 500; refresh(); });
+  $('#weight').addEventListener('input', e => { const v = Math.round(+e.target.value) || 500; state.weightG = Math.min(20000, Math.max(500, v)); refresh(); });
+  $('#weight').addEventListener('change', e => { e.target.value = state.weightG; });   // в поле — клампленное значение
   $('#term').addEventListener('change', e => {
     state.term = e.target.value;
     if (!fgroupTouched){
@@ -1874,7 +1874,8 @@ function bind(){
   });
   $('#btnAutoFeed').addEventListener('click', () => { state.freq = 'auto'; state.schedule = autoSchedule(state.ageMonths); state.milkOverride = {}; $('#freq').value='auto'; refresh(); });
   $('#juiceExtra').addEventListener('change', e => { state.juiceExtra = e.target.checked; refresh(); });
-  $('#sopManual').addEventListener('input', e => { state.sopManual = +e.target.value || 1000; refresh(); });
+  $('#sopManual').addEventListener('input', e => { state.sopManual = Math.min(1000, Math.max(200, +e.target.value || 1000)); refresh(); });
+  $('#sopManual').addEventListener('change', e => { e.target.value = state.sopManual; });   // в поле — клампленное значение
   $('#introAge').addEventListener('change', e => { state.introAge = +e.target.value; resetItems(state, false); refresh(); });
   $('#firstFood').addEventListener('change', e => { state.firstFood = e.target.value; resetItems(state, false); refresh(); });
   $('#meatVariant').addEventListener('change', e => {
